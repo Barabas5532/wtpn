@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wtpn/data.dart';
 
@@ -51,7 +53,11 @@ void main() {
     expect(
       uut.load(noChutePlaneId),
       completion(
-        isA<AircraftData>().having((d) => d.hasDragChute, "hasDragChute", false),
+        isA<AircraftData>().having(
+          (d) => d.hasDragChute,
+          "hasDragChute",
+          false,
+        ),
       ),
     );
     expect(
@@ -60,5 +66,19 @@ void main() {
         isA<AircraftData>().having((d) => d.hasDragChute, "hasDragChute", true),
       ),
     );
+  });
+
+  test('Loads all aircraft without errors', () {
+    final uut = DataLoader();
+
+    // Some planes are in development or otherwise not expected to work. These
+    // are skipped by marking them with '//' in the file.
+    final allPlaneIds = File("test/all_planes.txt")
+        .readAsLinesSync()
+        .where((i) => !i.startsWith('//'));
+
+    for (final id in allPlaneIds) {
+      expect(uut.load(id), completes);
+    }
   });
 }
