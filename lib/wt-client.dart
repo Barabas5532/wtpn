@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
 class WarThunderHttpClient {
@@ -25,6 +27,14 @@ class WarThunderHttpClient {
         print('Endpoint: $endpoint');
         print('Response status: ${response.statusCode}');
         print('Response body: ${response.body}');
+
+        if (endpoint == '/indicators' && response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+
+          if (json["valid"] == false || json["valid"] == null) return;
+          final type = json["type"] as String;
+          _streamController.add(type);
+        }
       });
     }
     /*
@@ -42,5 +52,7 @@ class WarThunderHttpClient {
      */
   }
 
-  //final Stream<String> data;
+  Stream<String> get selectedAircraftId => _streamController.stream;
+
+  final _streamController = StreamController<String>();
 }
