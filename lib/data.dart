@@ -110,10 +110,16 @@ class DataLoader {
     // name. e.g. a6m5hei.blkx points to fm/a6m5_Hei.blk. We must read the fm
     // file name from the top level file.
 
-    final fmFilePath = dataFile["fmFile"] as String? ?? "$planeId.blk";
+    var fmFilePath = dataFile["fmFile"] as String? ?? "fm/$planeId";
+    // Some fmFile entries do not end with the file extension. e.g.
+    // f_16a_block_10_norway. Normalise all of them to remove the extension
+    // then add it back later.
+    if (fmFilePath.endsWith(".blk")) {
+      fmFilePath = fmFilePath.substring(0, fmFilePath.length - 4);
+    }
     final fmFile = jsonDecode(
       await File(
-        "$dataminePath\\aces.vromfs.bin_u\\gamedata\\flightmodels\\${fmFilePath}x",
+        "$dataminePath\\aces.vromfs.bin_u\\gamedata\\flightmodels\\$fmFilePath.blkx",
       ).readAsString(),
     ) as Map<String, dynamic>;
 
