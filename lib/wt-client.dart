@@ -25,7 +25,7 @@ class WarThunderHttpClient {
         print('Endpoint: $endpoint');
         print('Response status: ${response.statusCode}');
         print('Response body: ${response.body}');
-      },);
+      });
     }
     /*
       $.ajax({type:'GET', url:'/mission.json',  success:format_mission_data })
@@ -40,9 +40,7 @@ class WarThunderHttpClient {
         }
       })
      */
-
   }
 
-//final Stream<String> data;
+  //final Stream<String> data;
 }
-
