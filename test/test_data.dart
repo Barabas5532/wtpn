@@ -185,6 +185,86 @@ void main() {
       skip: true,
     );
   });
+
+  test('Loads auto flaps correctly', () {
+    final uut = DataLoader();
+
+    const noAutoFlapsPlaneId = "spitfire_ix";
+    const autoFlapsPlaneId = "tempest_mk2";
+
+    expect(
+      uut.load(noAutoFlapsPlaneId),
+      completion(
+        isA<AircraftData>().having(
+          (d) => d.hasAutoFlaps,
+          "hasAutoFlaps",
+          false,
+        ),
+      ),
+    );
+    expect(
+      uut.load(autoFlapsPlaneId),
+      completion(
+        isA<AircraftData>().having((d) => d.hasAutoFlaps, "hasAutoFlaps", true),
+      ),
+    );
+  });
+
+  test('Loads reverse thrust correctly', () {
+    final uut = DataLoader();
+
+    const noReverseThrustPlaneId = "spitfire_ix";
+    const reverseThrustPlaneId = "tornado_adv";
+
+    expect(
+      uut.load(noReverseThrustPlaneId),
+      completion(
+        isA<AircraftData>().having(
+          (d) => d.hasReverseThrust,
+          "hasReverseThrust",
+          false,
+        ),
+      ),
+    );
+    expect(
+      uut.load(reverseThrustPlaneId),
+      completion(
+        isA<AircraftData>().having(
+          (d) => d.hasReverseThrust,
+          "hasReverseThrust",
+          true,
+        ),
+      ),
+    );
+  });
+
+  test('Loads cobra button correctly', () {
+    final uut = DataLoader();
+
+    const noCobraButtonPlaneId = "spitfire_ix";
+    const cobraButtonPlaneId = "mig_29_9_12g";
+
+    expect(
+      uut.load(noCobraButtonPlaneId),
+      completion(
+        isA<AircraftData>().having(
+          (d) => d.hasCobraButton,
+          "hasCobraButton",
+          false,
+        ),
+      ),
+    );
+    expect(
+      uut.load(cobraButtonPlaneId),
+      completion(
+        isA<AircraftData>().having(
+          (d) => d.hasCobraButton,
+          "hasCobraButton",
+          true,
+        ),
+      ),
+    );
+  });
 }
 
 TypeMatcher<FlapData> matchesFlapData({

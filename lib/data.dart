@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-//import 'package:flutter/foundation.dart';
-
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'data.freezed.dart';
@@ -37,10 +35,10 @@ class AircraftData({
 
   required final List<FlapData>? flapSettings,
 
-  //final bool hasAutoFlaps;
-  // final bool hasCobraButton;
-  // final bool hasReverseThrust;
-  // final bool missingYawAndAileronTrim;
+  required final bool hasAutoFlaps,
+  required final bool hasCobraButton,
+  required final bool hasReverseThrust,
+  required final bool missingYawAndAileronTrim,
   required final bool hasAirbrake,
   required final bool hasTailHook,
   required final bool hasDragChute,
@@ -224,14 +222,21 @@ class DataLoader {
       mne: vneMne.$2,
       vle: fmFile["Mass"]["GearDestructionIndSpeed"] as double,
       flapSettings: _getFlaps(fmFile),
-      hasAirbrake:
-          (fmFile["AvailableControls"] as Map<String, dynamic>)["hasAirbrake"]
-              as bool,
-      hasDragChute:
-          (fmFile["AvailableControls"] as Map<String, dynamic>)["hasChutes"]
+      hasAutoFlaps: (fmFile["AvailableControls"] as Map<String, dynamic>)
+          .containsKey("flapsLimits"),
+      hasAirbrake: fmFile["AvailableControls"]?["hasAirbrake"] as bool,
+      hasDragChute: fmFile["AvailableControls"]?["hasChutes"] as bool? ?? false,
+      hasTailHook: dataFile.containsKey("hook"),
+      hasReverseThrust:
+          fmFile["EngineType0"]?["Controls"]["hasThrustReverseControl"]
               as bool? ??
           false,
-      hasTailHook: dataFile.containsKey("hook"),
+      hasCobraButton:
+          fmFile["AvailableControls"]?["hasManeuverabilityMode"] as bool? ??
+          false,
+      missingYawAndAileronTrim:
+          !(fmFile["AvailableControls"]["hasAileronTrimControl"] as bool) &&
+          !((fmFile["AvailableControls"]["hasRudderTrimControl"] as bool)),
     );
   }
 }
