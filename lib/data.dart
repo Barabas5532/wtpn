@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 enum FlapSetting { combat, takeoff, landing }
 
@@ -30,7 +31,7 @@ class AircraftData {
   // Maximum operating speed with landing gear extended
   final double vle;
 
-  final List<FlapData> flapSettings;
+  final List<FlapData>? flapSettings;
 
   //final bool hasAutoFlaps;
   // final bool hasCobraButton;
@@ -107,35 +108,93 @@ class AircraftData {
   return res.last;
 }
 
-List<FlapData> _getFlaps(Map<String, dynamic> fmFile) {
-  if (!(fmFile["AvailableControls"]["hasFlapsControl"] as bool)) return [];
+List<FlapData>? _getFlaps(Map<String, dynamic> fmFile) {
+  // bf-109f-1 and some others contain a list of 2 or 3 true instead of a
+  // single boolean. Can't tell what it means but we can assume they have
+  // flaps.
+  if (fmFile["AvailableControls"]["hasFlapsControl"] case bool hasFlapsControl
+      when !hasFlapsControl) {
+    return null;
+  }
 
   final aerodynamics = fmFile["Aerodynamics"] as Map<String, dynamic>;
+  // yp-38 has a list of two identical entries in FlapAxis. Use the fist
+  // one and ignore the other.
+  final flapsAxis = switch (aerodynamics["FlapsAxis"]) {
+    List<dynamic> f => f[0],
+    Map<dynamic, dynamic> f => f,
+    var f => throw StateError("Unexpected type ${f.runtimeType}"),
+  };
 
   final presentFlapSettings = FlapSetting.values
-      .where((f) => aerodynamics["FlapsAxis"][f.jsonKey]["Presents"] as bool)
+      .where((f) => flapsAxis[f.jsonKey]["Presents"] as bool)
+      .map((f) => (f, flapsAxis[f.jsonKey]["Flaps"] as double))
       .toList();
 
-  final flapData = <FlapData>[];
   final mass = fmFile["Mass"] as Map<String, dynamic>;
-  if (((mass["FlapsDestructionIndSpeedP"] as List<dynamic>?)?.cast<double>())
-      case var s?) {
-    for (int i = 0; i < presentFlapSettings.length; i++) {
-      final vfe = s[1 + 2 * i];
-      flapData.add(FlapData(setting: presentFlapSettings[i], vfe: vfe));
-    }
+  // Assume that the points present in the fm file are used to linear
+  // interpolate based on the flap position marked for each flap setting.
+  final vfe = <(double, double)>[];
+  if ((mass["FlapsDestructionIndSpeedP"] as Object?)
+          ?.ifTypeOrNull<List<dynamic>>()
+          ?.cast<double>()
+      case final s?) {
+    assert(s.length == 4);
+    vfe.add((s[0], s[1]));
+    vfe.add((s[2], s[3]));
   } else {
-    final offset = mass.containsKey("FlapsDestructionIndSpeedP0") ? 0 : 1;
-    for (int i = 0; i < presentFlapSettings.length; i++) {
-      final vfe =
-          (mass["FlapsDestructionIndSpeedP${i + offset}"] as List<dynamic>)
-              .cast<double>()[1];
-      flapData.add(FlapData(setting: presentFlapSettings[i], vfe: vfe));
+    int i = mass.containsKey("FlapsDestructionIndSpeedP0") ? 0 : 1;
+    while (true) {
+      // Some planes like seafire_fr47 skip some indices. Specifically that
+      // one goes from P2 to P4. That also seems to break the wiki page showing
+      // 370 km/h for both landing and takeoff flaps.
+      // Increment i and try up to 100 to work around.
+      // TODO maybe this is a bug exclusive to that plane? Make some debug code
+      // to check it.
+
+      // bb-1 has a list of lists at P1. The wiki lists both landing and takeoff
+      // limit as 340 km/h which corresponds to the first entry in the list.
+      // TODO check how many other planes have this
+      // TODO check values produced for seafire_fr47, bb-1, a_10a_early,
+      //      i-16_chung_28, ro_44 against in game and wiki.
+      switch (mass["FlapsDestructionIndSpeedP$i"]) {
+        case List<dynamic> s when s.first is List:
+          vfe.addAll(s.map((s) => (s[0], s[1])));
+          break;
+        case List<dynamic> s:
+          vfe.add((s[0], s[1]));
+          break;
+        case null:
+          break;
+      }
+
+      i++;
+      if (i >= 100) break;
     }
   }
 
-  assert(flapData.isNotEmpty);
-  return flapData;
+  if (presentFlapSettings.isEmpty) {
+    // ro_44 claims to have flaps but doesn't define any settings.
+    return null;
+  }
+
+  // i-16_chung_28 contains a single value of 700 instead of a list. wiki does
+  // not show any flaps speed limits. wm_21 also has 257 with the value missing
+  // from the wiki.
+  //
+  // These planes reach here with no vfe points defined and we return 0 for now
+  // to indicate unknown limits.
+  // TODO check if the value in the file is used by the game or not and update
+  //  return value.
+  if (vfe.isEmpty) {
+    return presentFlapSettings
+        .map((f) => FlapData(setting: f.$1, vfe: 0))
+        .toList();
+  }
+
+  return presentFlapSettings
+      .map((f) => FlapData(setting: f.$1, vfe: vfe.lerp(f.$2)))
+      .toList();
 }
 
 class DataLoader {
@@ -180,5 +239,45 @@ class DataLoader {
           false,
       hasTailHook: dataFile.containsKey("hook"),
     );
+  }
+}
+
+extension _LerpEx on List<(double, double)> {
+  double lerp(double x) {
+    int index = -1;
+    for (int i = 0; i < this.length; i++) {
+      if (this[i].$1 >= x) {
+        index = i;
+        break;
+      }
+
+      if (i == length - 1) {
+        // Some planes like the j6k1 have the last entry in the table at a
+        // lower flap position. In that case we use the last speed to match
+        // the value shown in the wiki.
+        return last.$2;
+      }
+    }
+
+    // Some planes like a_10a_early have the first point in the destruction
+    // speed table defined at a flap setting later than the first flap position.
+    // In that case we match the wiki behaviour and use the speed from the first
+    // point.
+    if (index == 0) {
+      return this[0].$2;
+    }
+
+    final t = (x - this[index - 1].$1) / (this[index].$1 - this[index - 1].$1);
+    final a = this[index - 1].$2;
+    final b = this[index].$2;
+    return a * (1.0 - t) + b * t;
+  }
+}
+
+extension _NullableObjectExtension on Object {
+  /// If the target is [T], return it, otherwise `null`.
+  T? ifTypeOrNull<T>() {
+    var self = this;
+    return self is T ? self as T : null;
   }
 }
