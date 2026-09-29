@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wtpn/data.dart';
-import 'package:wtpn/wt-client.dart';
+import 'package:wtpn/wt_client.dart';
 
 void main() {
   runApp(const MainApp());

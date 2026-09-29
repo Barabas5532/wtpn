@@ -196,7 +196,7 @@ class DataLoader {
     const dataminePath = r"E:\src\warthunder pilot notes\War-Thunder-Datamine\";
     final dataFile = jsonDecode(
       await File(
-        "$dataminePath\\aces.vromfs.bin_u\\gamedata\\flightmodels\\${planeId}.blkx",
+        "$dataminePath\\aces.vromfs.bin_u\\gamedata\\flightmodels\\$planeId.blkx",
       ).readAsString(),
     ) as Map<String, dynamic>;
 
@@ -239,7 +239,7 @@ class DataLoader {
 extension _LerpEx on List<(double, double)> {
   double lerp(double x) {
     int index = -1;
-    for (int i = 0; i < this.length; i++) {
+    for (int i = 0; i < length; i++) {
       if (this[i].$1 >= x) {
         index = i;
         break;
