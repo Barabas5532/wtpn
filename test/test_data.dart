@@ -81,4 +81,117 @@ void main() {
       expect(uut.load(id), completes);
     }
   });
+
+  group("Loads flaps correctly", () {
+    // Reference values came from the wiki
+    test('when there are no flaps', () {
+      final uut = DataLoader();
+      final planeId = "a_129_a";
+
+      expect(
+        uut.load(planeId),
+        completion(
+          isA<AircraftData>().having(
+            (d) => d.flapSettings,
+            "flapSettings",
+            isNull,
+          ),
+        ),
+      );
+    });
+
+    test('when flaps are defined with 2 points', () {
+      final uut = DataLoader();
+      final planeId = "a_20g_30_ussr";
+
+      expect(
+        uut.load(planeId),
+        completion(
+          isA<AircraftData>().having(
+            (d) => d.flapSettings,
+            "flapSettings",
+            equals([
+              matchesFlapData(setting: FlapSetting.combat, vfe: 428),
+              matchesFlapData(setting: FlapSetting.takeoff, vfe: 407),
+              matchesFlapData(setting: FlapSetting.landing, vfe: 296),
+            ]),
+          ),
+        ),
+      );
+    });
+
+    test('when flaps are defined with many points', () {
+      final uut = DataLoader();
+      final planeId = "p-51a_tl";
+
+      expect(
+        uut.load(planeId),
+        completion(
+          isA<AircraftData>().having(
+            (d) => d.flapSettings,
+            "flapSettings",
+            equals([
+              matchesFlapData(setting: FlapSetting.combat, vfe: 652),
+              matchesFlapData(setting: FlapSetting.takeoff, vfe: 521),
+              matchesFlapData(setting: FlapSetting.landing, vfe: 279),
+            ]),
+          ),
+        ),
+      );
+    });
+
+    test('when flaps are defined only above a setting', () {
+      final uut = DataLoader();
+      final planeId = "a_10a_early";
+
+      expect(
+        uut.load(planeId),
+        completion(
+          isA<AircraftData>().having(
+            (d) => d.flapSettings,
+            "flapSettings",
+            equals([
+              matchesFlapData(setting: FlapSetting.takeoff, vfe: 740),
+              matchesFlapData(setting: FlapSetting.landing, vfe: 370),
+            ]),
+          ),
+        ),
+      );
+    });
+
+    test('when flaps are defined only below a setting', () {
+      final uut = DataLoader();
+      final planeId = "j6k1";
+
+      expect(
+        uut.load(planeId),
+        completion(
+          isA<AircraftData>().having(
+            (d) => d.flapSettings,
+            "flapSettings",
+            equals([
+              matchesFlapData(setting: FlapSetting.combat, vfe: 460),
+              matchesFlapData(setting: FlapSetting.takeoff, vfe: 382),
+              matchesFlapData(setting: FlapSetting.landing, vfe: 280),
+            ]),
+          ),
+        ),
+      );
+    });
+
+    test(
+      'when flaps are defined with a single value probably incorrectly',
+      () {},
+      skip: true,
+    );
+  });
+}
+
+TypeMatcher<FlapData> matchesFlapData({
+  required FlapSetting setting,
+  required double vfe,
+}) {
+  return isA<FlapData>()
+      .having((f) => f.setting, "setting", setting)
+      .having((f) => f.vfe, "vfe", closeTo(vfe, 1));
 }

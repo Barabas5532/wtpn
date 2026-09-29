@@ -1,6 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
+
+//import 'package:flutter/foundation.dart';
+
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'data.freezed.dart';
 
 enum FlapSetting { combat, takeoff, landing }
 
@@ -12,45 +17,34 @@ extension FlapSettingKeyEx on FlapSetting {
   };
 }
 
-class FlapData {
-  final FlapSetting setting;
-
+@freezed
+class FlapData({
+  required final FlapSetting setting,
   // Maximum speed with this flap setting
-  final double vfe;
+  required final double vfe,
+}) with _$FlapData;
 
-  new({required this.setting, required this.vfe});
-}
-
-class AircraftData {
+@freezed
+class AircraftData({
   // Maximum operating speed
-  final double vne;
+  required final double vne,
 
   // Maximum operating mach number
-  final double mne;
+  required final double mne,
 
   // Maximum operating speed with landing gear extended
-  final double vle;
+  required final double vle,
 
-  final List<FlapData>? flapSettings;
+  required final List<FlapData>? flapSettings,
 
   //final bool hasAutoFlaps;
   // final bool hasCobraButton;
   // final bool hasReverseThrust;
   // final bool missingYawAndAileronTrim;
-  final bool hasAirbrake;
-  final bool hasTailHook;
-  final bool hasDragChute;
-
-  new({
-    required this.vne,
-    required this.mne,
-    required this.vle,
-    required this.flapSettings,
-    required this.hasAirbrake,
-    required this.hasTailHook,
-    required this.hasDragChute,
-  });
-}
+  required final bool hasAirbrake,
+  required final bool hasTailHook,
+  required final bool hasDragChute,
+}) with _$AircraftData;
 
 (double, double) _getVneMne(Map<String, dynamic> fmFile) {
   double? vne;
