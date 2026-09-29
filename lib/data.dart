@@ -1,7 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
-enum FlapSetting { Combat, Takeoff, Landing }
+enum FlapSetting { combat, takeoff, landing }
+
+extension FlapSettingKeyEx on FlapSetting {
+  String get jsonKey => switch (this) {
+    FlapSetting.combat => "Combat",
+    FlapSetting.takeoff => "Takeoff",
+    FlapSetting.landing => "Landing",
+  };
+}
 
 class FlapData {
   final FlapSetting setting;
@@ -22,7 +30,8 @@ class AircraftData {
   // Maximum operating speed with landing gear extended
   final double vle;
 
-  //final List<FlapData> flapSettings;
+  final List<FlapData> flapSettings;
+
   //final bool hasAutoFlaps;
   // final bool hasCobraButton;
   // final bool hasReverseThrust;
@@ -35,6 +44,7 @@ class AircraftData {
     required this.vne,
     required this.mne,
     required this.vle,
+    required this.flapSettings,
     required this.hasAirbrake,
     required this.hasTailHook,
     required this.hasDragChute,
@@ -97,6 +107,37 @@ class AircraftData {
   return res.last;
 }
 
+List<FlapData> _getFlaps(Map<String, dynamic> fmFile) {
+  if (!(fmFile["AvailableControls"]["hasFlapsControl"] as bool)) return [];
+
+  final aerodynamics = fmFile["Aerodynamics"] as Map<String, dynamic>;
+
+  final presentFlapSettings = FlapSetting.values
+      .where((f) => aerodynamics["FlapsAxis"][f.jsonKey]["Presents"] as bool)
+      .toList();
+
+  final flapData = <FlapData>[];
+  final mass = fmFile["Mass"] as Map<String, dynamic>;
+  if (((mass["FlapsDestructionIndSpeedP"] as List<dynamic>?)?.cast<double>())
+      case var s?) {
+    for (int i = 0; i < presentFlapSettings.length; i++) {
+      final vfe = s[1 + 2 * i];
+      flapData.add(FlapData(setting: presentFlapSettings[i], vfe: vfe));
+    }
+  } else {
+    final offset = mass.containsKey("FlapsDestructionIndSpeedP0") ? 0 : 1;
+    for (int i = 0; i < presentFlapSettings.length; i++) {
+      final vfe =
+          (mass["FlapsDestructionIndSpeedP${i + offset}"] as List<dynamic>)
+              .cast<double>()[1];
+      flapData.add(FlapData(setting: presentFlapSettings[i], vfe: vfe));
+    }
+  }
+
+  assert(flapData.isNotEmpty);
+  return flapData;
+}
+
 class DataLoader {
   Future<AircraftData> load(String planeId) async {
     const dataminePath = r"E:\src\warthunder pilot notes\War-Thunder-Datamine\";
@@ -129,6 +170,7 @@ class DataLoader {
       vne: vneMne.$1,
       mne: vneMne.$2,
       vle: fmFile["Mass"]["GearDestructionIndSpeed"] as double,
+      flapSettings: _getFlaps(fmFile),
       hasAirbrake:
           (fmFile["AvailableControls"] as Map<String, dynamic>)["hasAirbrake"]
               as bool,
