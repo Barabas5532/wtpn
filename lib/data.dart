@@ -39,6 +39,7 @@ class AircraftData({
   required final bool hasCobraButton,
   required final bool hasReverseThrust,
   required final bool missingYawAndAileronTrim,
+  //TODO required final bool missingElevatorTrim,
   required final bool hasAirbrake,
   required final bool hasTailHook,
   required final bool hasDragChute,
